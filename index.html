@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FreshBasket — Online Fruits & Vegetables Store</title>
+  <style>
+    /* ====== Basic layout ====== */
+    :root{
+      --green:#4CAF50; --cream:#FFF8E1; --muted:#6b6b6b;
+      --card-bg: #ffffff; --radius:14px;
+    }
+    *{box-sizing:border-box}
+    body{font-family:Inter, Poppins, system-ui, Arial; margin:0; background:#f6fff5; color:#222}
+    header{background:var(--green); color:white; padding:18px 20px; display:flex; align-items:center; justify-content:space-between}
+    header h1{margin:0; font-size:20px}
+    header nav a{color:white; text-decoration:none; margin-left:14px; font-weight:600}
+
+    main{padding:20px; min-height:calc(100vh - 120px)}
+    footer{background:var(--green); color:white; text-align:center; padding:10px}
+
+    /* ====== Views (pages) ====== */
+    .view{display:none}
+    .view.active{display:block}
+
+    /* ====== Welcome ====== */
+    .welcome{display:flex; gap:24px; align-items:center; justify-content:center; flex-wrap:wrap; padding:40px 0}
+    .welcome-card{background:linear-gradient(180deg,var(--cream),#ffffff); padding:30px; border-radius:16px; box-shadow:0 8px 20px rgba(0,0,0,0.06); width:720px; max-width:94%}
+    .welcome-card h2{margin:0 0 8px}
+    .welcome-card p{color:var(--muted); margin:0 0 18px}
+    .btn{background:var(--green); color:white; border:none; padding:10px 16px; border-radius:10px; cursor:pointer; font-weight:700}
+
+    /* ====== Product grid ====== */
+    .controls{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px}
+    .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:18px}
+    .card{background:var(--card-bg); border-radius:var(--radius); padding:12px; text-align:center; box-shadow:0 6px 18px rgba(0,0,0,0.06); cursor:pointer; transition:transform .18s,box-shadow .18s}
+    .card:hover{transform:translateY(-6px)}
+    .thumb{width:120px;height:120px;border-radius:12px;object-fit:cover;margin:0 auto 10px; display:block}
+    .card h3{margin:8px 0 6px;font-size:16px}
+    .price{color:var(--green); font-weight:700}
+    .small{font-size:13px;color:var(--muted)}
+
+    .actions{display:flex; gap:8px; justify-content:center; margin-top:8px}
+    .outline{background:white;color:var(--green);border:1px solid var(--green)}
+
+    /* selected state */
+    .card.selected{box-shadow:0 10px 26px rgba(76,175,80,0.12); border:2px solid rgba(76,175,80,0.12)}
+
+    /* ====== Details ====== */
+    .details{max-width:760px;margin:0 auto;text-align:center}
+    .details .big-img{width:260px;height:260px;object-fit:cover;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.08)}
+    .details .meta{margin-top:12px;color:var(--muted)}
+    .qty{width:80px;padding:8px;border-radius:8px;border:1px solid #e6e6e6}
+
+    /* ====== Cart table ====== */
+    table{width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.04)}
+    th,td{padding:12px;border-bottom:1px solid #f0f0f0;text-align:left}
+    th{background:var(--green); color:white}
+    .right{text-align:right}
+    .muted{color:var(--muted)}
+
+    /* ====== Checkout form ====== */
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    label{display:block;font-weight:600;margin-bottom:6px}
+    input[type=text],textarea,select{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e6e6}
+    textarea{resize:vertical}
+    .full{grid-column:1/-1}
+
+    /* small responsive tweaks */
+    @media (max-width:640px){.form-grid{grid-template-columns:1fr}.details .big-img{width:200px;height:200px}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🍏 FreshBasket</h1>
+    <nav>
+      <a href="#" onclick="showView('welcome')">Welcome</a>
+      <a href="#" onclick="showView('products')">Products</a>
+      <a href="#" onclick="showView('cart')">🛒 Cart (<span id="cartCount">0</span>)</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- WELCOME VIEW -->
+    <section id="welcome" class="view active">
+      <div class="welcome">
+        <div class="welcome-card">
+          <h2>Welcome to FreshBasket</h2>
+          <p>Your online fruits & vegetables store — fresh produce delivered from farms to your door.
+             Healthy, seasonal, and handpicked.</p>
+          <div style="display:flex;gap:12px;align-items:center">
+            <button class="btn" onclick="showView('products')">Start Shopping</button>
+            <button class="btn outline" onclick="showView('products')">Browse Products</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRODUCTS VIEW -->
+    <section id="products" class="view">
+      <div class="controls">
+        <div><strong>Products available</strong> <span class="muted">— click a card to select for sequential view</span></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn" id="viewSelectedBtn" onclick="viewSelected()" style="display:none">View Selected</button>
+          <button class="btn outline" onclick="showView('cart')">Go to Cart</button>
+        </div>
+      </div>
+
+      <div id="grid" class="grid"></div>
+    </section>
+
+    <!-- DETAILS VIEW -->
+    <section id="details" class="view">
+      <div class="details">
+        <img id="detailImage" class="big-img" src="" alt="">
+        <h2 id="detailName"></h2>
+        <div class="meta"><span id="detailPrice"></span> • <span id="detailBenefitsShort" class="muted"></span></div>
+
+        <p id="detailBenefits" style="max-width:760px;margin:14px auto;line-height:1.5"></p>
+
+        <div style="margin-top:12px;display:flex;gap:10px;justify-content:center;align-items:center">
+          <label style="display:flex;flex-direction:column;align-items:center"><span class="small muted">Quantity (kg)</span>
+            <input id="detailQty" class="qty" type="number" value="1" min="1">
+          </label>
+          <button class="btn" onclick="addToCartFromDetails()">Add to Cart</button>
+          <button class="btn outline" onclick="nextDetail()">Next Item ➡️</button>
+          <button class="btn outline" onclick="showView('products')">Back</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CART VIEW -->
+    <section id="cart" class="view">
+      <h2>Your Cart</h2>
+      <div style="overflow:auto;margin-top:12px">
+        <table id="cartTable">
+          <thead>
+            <tr><th>Item</th><th>Qty (kg)</th><th>Price/kg</th><th>Total</th><th>Action</th></tr>
+          </thead>
+          <tbody id="cartBody"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap">
+        <div><strong id="cartTotalTxt">Total: ₹0</strong></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn outline" onclick="clearCart()">Clear Cart</button>
+          <button class="btn" onclick="showView('checkout')">Proceed to Checkout</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHECKOUT VIEW -->
+    <section id="checkout" class="view">
+      <h2>Checkout</h2>
+      <div style="max-width:900px;margin:0 auto;">
+        <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
+          <form id="checkoutForm" style="flex:1;min-width:260px">
+            <div class="form-grid">
+              <div>
+                <label for="cname">Full name</label>
+                <input id="cname" type="text" required>
+              </div>
+              <div>
+                <label for="cphone">Phone</label>
+                <input id="cphone" type="text" required>
+              </div>
+              <div class="full">
+                <label for="caddress">Delivery address</label>
+                <textarea id="caddress" rows="3" required></textarea>
+              </div>
+              <div>
+                <label for="pay">Payment method</label>
+                <select id="pay">
+                  <option>Cash on Delivery</option>
+                  <option>UPI</option>
+                  <option>Card (simulate)</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:8px">
+              <button class="btn" type="button" onclick="submitOrder()">Place Order</button>
+              <button class="btn outline" type="button" onclick="showView('cart')">Back to Cart</button>
+            </div>
+          </form>
+
+          <div style="width:320px;min-width:240px">
+            <h3>Order Summary</h3>
+            <div id="summaryBox" style="background:white;padding:12px;border-radius:10px"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONFIRMATION VIEW -->
+    <section id="confirmation" class="view">
+      <div style="max-width:720px;margin:20px auto;text-align:center;background:linear-gradient(180deg,#fff,#f7fff3);padding:30px;border-radius:12px">
+        <h2>Thank you for your order 🎉</h2>
+        <p id="orderMsg">We received your order and will deliver fresh produce to your address.</p>
+        <button class="btn" onclick="showView('products')">Continue Shopping</button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <small>© 2025 FreshBasket • Fresh produce, delivered with care</small>
+  </footer>
+
+  <script>
+    // ----- Product data -----
+    const items = [
+      {name:'Apple', price:120, benefits:'Apples are rich in fiber and vitamin C — good for heart health and digestion. They also help regulate blood sugar.',img:'images/apple.jpg'},
+      {name:'Banana', price:60, benefits:'Bananas provide potassium and quick energy. They support muscle function and gut health.',img:'images/banana.jpg'},
+      {name:'Carrot', price:80, benefits:'Carrots contain beta-carotene which converts to vitamin A — great for eyesight and skin.',img:'images/carrot.jpg'},
+      {name:'Mango', price:150, benefits:'Mangoes are rich in vitamins A and C — boost immunity and improve skin health.',img:'images/mango.jpg'},
+      {name:'Orange', price:100, benefits:'Oranges are packed with vitamin C, support immunity and hydration.',img:'images/orange.jpg'},
+      {name:'Grapes', price:90, benefits:'Grapes offer antioxidants that protect the heart and brain and reduce inflammation.',img:'images/grapes.jpg'},
+      {name:'Watermelon', price:70, benefits:'Watermelon hydrates, supplies vitamins A & C and helps digestion.',img:'images/watermelon.jpg'},
+      {name:'Tomato', price:60, benefits:'Tomatoes contain lycopene — supports heart health and may reduce cancer risk.',img:'images/tomato.jpg'},
+      {name:'Potato', price:50, benefits:'Potatoes give carbohydrates for energy and provide potassium and vitamin C.',img:'images/potato.jpg'},
+      {name:'Spinach', price:40, benefits:'Spinach is high in iron, calcium and vitamins — supports blood and bone health.',img:'images/spinach.jpg'},
+      {name:'Cucumber', price:45, benefits:'Cucumbers hydrate and are good for skin, low in calories and refreshing.',img:'images/cucumber.jpg'}
+    ];
+
+    // UI state
+    let selectedSet = new Set(); // for multi-select sequential view
+    let seqList = []; // array built from selectedSet when viewing sequentially
+    let seqIndex = 0; // pointer into seqList
+    let currentSingle = null; // index when viewing single item from card detail
+
+    // On load: render grid and cart count
+    document.addEventListener('DOMContentLoaded', ()=>{
+      renderGrid();
+      renderCartCount();
+    });
+
+    function showView(id){
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      if(id==='cart') renderCart();
+      if(id==='checkout') renderSummary();
+    }
+
+    // render product cards
+    function renderGrid(){
+      const grid = document.getElementById('grid'); grid.innerHTML='';
+      items.forEach((it,i)=>{
+        const card = document.createElement('div'); card.className='card';
+        card.innerHTML = `
+          <img class="thumb" src="${it.img}" alt="${it.name}" />
+          <h3>${it.name}</h3>
+          <div class="price">₹${it.price}/kg</div>
+          <div class="small muted">${it.benefits.slice(0,60)}...</div>
+          <div class="actions">
+            <button onclick="event.stopPropagation(); openDetails(${i})" class="btn">View Details</button>
+            <button onclick="event.stopPropagation(); addToCartQuick(${i})" class="btn outline">Add</button>
+          </div>`;
+
+        // click toggles selection for sequential view
+        card.onclick = ()=>{ toggleSelect(i, card) };
+        grid.appendChild(card);
+      });
+      updateSelectedUI();
+    }
+
+    function toggleSelect(i, card){
+      if(selectedSet.has(i)) selectedSet.delete(i); else selectedSet.add(i);
+      updateSelectedUI();
+      // visually mark selection
+      document.querySelectorAll('#grid .card').forEach((c,idx)=>{
+        if(selectedSet.has(idx)) c.classList.add('selected'); else c.classList.remove('selected');
+      });
+    }
+
+    function updateSelectedUI(){
+      const btn = document.getElementById('viewSelectedBtn');
+      btn.style.display = selectedSet.size>0 ? 'inline-block':'none';
+      btn.innerText = `View Selected (${selectedSet.size})`;
+    }
+
+    // open details for single card
+    function openDetails(i){
+      currentSingle = i; seqList = []; seqIndex = 0; // clear sequential mode
+      populateDetails(i);
+      showView('details');
+    }
+
+    // Quick add (1 kg default) from grid
+    function addToCartQuick(i){
+      const it = items[i]; addToCartInternal(it.name,1,it.price);
+      alert(it.name + ' added to cart (1kg)');
+      renderCartCount();
+    }
+
+    // View selected sequentially
+    function viewSelected(){
+      seqList = Array.from(selectedSet);
+      if(seqList.length===0){ alert('Select one or more products first by clicking cards.'); return; }
+      seqIndex = 0; currentSingle = null;
+      populateDetails(seqList[seqIndex]);
+      showView('details');
+    }
+
+    // populate details view for index (either single or seq index)
+    function populateDetails(i){
+      const it = items[i];
+      document.getElementById('detailImage').src = it.img;
+      document.getElementById('detailName').innerText = it.name;
+      document.getElementById('detailPrice').innerText = `Price: ₹${it.price}/kg`;
+      document.getElementById('detailBenefitsShort').innerText = it.benefits.slice(0,50) + '...';
+      document.getElementById('detailBenefits').innerText = it.benefits + '\n\nHow it helps: ' + benefitsExplain(it.name);
+      document.getElementById('detailQty').value = 1;
+      // store current pointer
+      if(currentSingle===null) { localStorage.setItem('currentSeqIndex', seqIndex); localStorage.setItem('currentSeqList', JSON.stringify(seqList)); }
+      else { localStorage.removeItem('currentSeqList'); localStorage.removeItem('currentSeqIndex'); }
+    }
+
+    // short human-friendly explanation — small helper
+    function benefitsExplain(name){
+      switch(name.toLowerCase()){
+        case 'apple': return 'Supports heart and gut health due to fiber and polyphenols.';
+        case 'banana': return 'Replenishes electrolytes and supports energy levels.';
+        case 'carrot': return 'Provides Vitamin A for healthy eyes and skin.';
+        case 'mango': return 'Rich in antioxidants and supports immunity.';
+        case 'orange': return 'Boosts immune response and skin health.';
+        case 'grapes': return 'Antioxidants in grapes support cardiovascular health.';
+        case 'watermelon': return 'Hydrating and soothing, good for digestion.';
+        case 'tomato': return 'Lycopene supports heart and skin health.';
+        case 'potato': return 'Energy-rich and a source of potassium.';
+        case 'spinach': return 'High iron and vitamins — supports blood health.';
+        case 'cucumber': return 'Hydrating, low-calorie, supports skin hydration.';
+        default: return 'Nutritious and supports a healthy diet.';
+      }
+    }
+
+    // when user clicks Next Item in details
+    function nextDetail(){
+      if(seqList.length>0){ seqIndex++; if(seqIndex>=seqList.length){ alert('End of selected items'); showView('products'); selectedSet.clear(); renderGrid(); updateSelectedUI(); return; } populateDetails(seqList[seqIndex]); }
+      else if(currentSingle!==null){ // if single, go to next product overall
+        currentSingle = (currentSingle + 1) % items.length; populateDetails(currentSingle);
+      }
+    }
+
+    // Add to cart from details
+    function addToCartFromDetails(){
+      const qty = parseFloat(document.getElementById('detailQty').value) || 1;
+      const name = document.getElementById('detailName').innerText;
+      const item = items.find(it=>it.name===name);
+      addToCartInternal(item.name, qty, item.price);
+      alert(`${item.name} — ${qty}kg added to cart`);
+      renderCartCount();
+    }
+
+    function addToCartInternal(name, qty, price){
+      const cart = JSON.parse(localStorage.getItem('cart')||'[]');
+      cart.push({name, qty, price, total: Math.round((qty*price)*100)/100});
+      localStorage.setItem('cart', JSON.stringify(cart));
+    }
+
+    // CART view rendering
+    function renderCartCount(){
+      const cart = JSON.parse(localStorage.getItem('cart')||'[]');
+      const count = cart.reduce((s,i)=>s + (i.qty||0),0);
+      document.getElementById('cartCount').innerText = count;
+    }
+
+    function renderCart(){
+      const tbody = document.getElementById('cartBody'); tbody.innerHTML='';
+      const cart = JSON.parse(localStorage.getItem('cart')||'[]');
+      if(cart.length===0){ tbody.innerHTML = `<tr><td colspan="5" class="muted">Your cart is empty. Add items from Products.</td></tr>`; document.getElementById('cartTotalTxt').innerText = 'Total: ₹0'; return; }
+      let total=0;
+      cart.forEach((c,i)=>{ total += c.total; const tr = document.createElement('tr'); tr.innerHTML = `<td>${c.name}</td><td>${c.qty}</td><td>₹${c.price}</td><td>₹${c.total}</td><td><button onclick="removeCartItem(${i})">Remove</button></td>`; tbody.appendChild(tr); });
+      document.getElementById('cartTotalTxt').innerText = 'Total: ₹' + Math.round(total*100)/100;
+    }
+
+    function removeCartItem(i){
+      const cart = JSON.parse(localStorage.getItem('cart')||'[]'); cart.splice(i,1); localStorage.setItem('cart', JSON.stringify(cart)); renderCart(); renderCartCount();
+    }
+
+    function clearCart(){ if(confirm('Clear entire cart?')){ localStorage.removeItem('cart'); renderCart(); renderCartCount(); }}
+
+    // Checkout summary
+    function renderSummary(){
+      const summ = document.getElementById('summaryBox');
+      const cart = JSON.parse(localStorage.getItem('cart')||'[]');
+      if(cart.length===0){ summ.innerHTML = '<div class="muted">Cart is empty — add items before checkout.</div>'; return; }
+      let html = '<ul style="list-style:none;padding:0;margin:0">'; let total=0;
+      cart.forEach(c=>{ html += `<li style="padding:8px 0;border-bottom:1px solid #f0f0f0">${c.name} — ${c.qty}kg → ₹${c.total}</li>`; total += c.total; }); html += '</ul>';
+      html += `<div style="margin-top:10px"><strong>Total: ₹${Math.round(total*100)/100}</strong></div>`;
+      summ.innerHTML = html;
+    }
+
+    // Submit order (simple simulation + validation)
+    function submitOrder(){
+      const name = document.getElementById('cname').value.trim();
+      const phone = document.getElementById('cphone').value.trim();
+      const address = document.getElementById('caddress').value.trim();
+      const pay = document.getElementById('pay').value;
+      const cart = JSON.parse(localStorage.getItem('cart')||'[]');
+      if(cart.length===0){ alert('Your cart is empty!'); showView('products'); return; }
+      if(!name || !phone || !address){ alert('Please fill all required fields'); return; }
+      // simple phone check
+      if(!/^[0-9]{7,15}$/.test(phone)){ alert('Enter a valid phone number (digits only)'); return; }
+
+      // build order summary
+      let total = cart.reduce((s,i)=>s+i.total,0);
+      const order = {id: 'FB'+Date.now(), name, phone, address, pay, items:cart, total};
+      localStorage.setItem('lastOrder', JSON.stringify(order));
+      // clear cart
+      localStorage.removeItem('cart'); renderCartCount();
+      // show confirmation
+      document.getElementById('orderMsg').innerText = `Order ${order.id} confirmed. We will deliver ₹${Math.round(order.total*100)/100} worth of fresh produce to: ${address}.`; 
+      showView('confirmation');
+    }
+  </script>
+</body>
+</html>
